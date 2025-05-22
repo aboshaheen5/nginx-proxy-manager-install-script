@@ -10,6 +10,16 @@
   <img src="https://nginxproxymanager.com/github.png" alt="Nginx Proxy Manager" width="400"/>
 </div>
 
+## 🚀 Quick Start
+
+```bash
+# One-line installation
+curl -sSL https://raw.githubusercontent.com/aboshaheen5/nginx-proxy-manager-install-script/main/install.sh | sudo bash
+
+# Installation with custom options
+curl -sSL https://raw.githubusercontent.com/aboshaheen5/nginx-proxy-manager-install-script/main/install.sh | sudo bash -s -- --install-path /custom/path --version 2.9.22 --install-monitoring
+```
+
 ## 📋 Table of Contents
 - [Overview](#-overview)
 - [Features](#-features)
@@ -26,6 +36,16 @@
 
 A powerful and user-friendly script to automate the installation of Nginx Proxy Manager. This script provides a seamless setup experience for deploying a professional-grade reverse proxy solution with a beautiful web interface.
 
+### 🎯 Key Benefits
+- **Time Saving**: Complete setup in under 5 minutes
+- **Zero Configuration**: Works out of the box
+- **Production Ready**: Follows security best practices
+- **Easy Updates**: Simple update process
+- **Community Support**: Active community and regular updates
+- **Automatic Maintenance**: Built-in backup and update scheduling
+- **Monitoring Tools**: Integrated system monitoring
+- **SSL Management**: Automatic SSL certificate handling
+
 ## 👨‍💻 Author
 **Mohamed Shaheen** - [GitHub](https://github.com/aboshaheen5)
 
@@ -36,6 +56,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## ✨ Features
 
+### Core Features
 - **🚀 Easy Installation**: One-command installation process
 - **🎨 Web Interface**: Beautiful and intuitive web-based management interface
 - **🔒 SSL Management**: Automatic SSL certificate management with Let's Encrypt
@@ -43,8 +64,24 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **⚡ Advanced Rules**: Easy configuration of redirection and proxy rules
 - **🔄 Protocol Support**: Supports HTTP, HTTPS, WebSocket, and more
 - **🐳 Docker-based**: Containerized deployment for better isolation and management
+
+### Advanced Features
 - **📊 Monitoring**: Built-in monitoring and statistics
 - **🔐 Security**: Automatic security headers and best practices
+- **🌍 Multi-Domain**: Support for multiple domains and subdomains
+- **📱 Mobile Friendly**: Responsive web interface
+- **🔍 Logging**: Detailed access and error logs
+- **🛡️ DDoS Protection**: Basic DDoS protection included
+- **📈 Performance**: Optimized for high performance
+- **🔄 Auto-Renewal**: Automatic SSL certificate renewal
+
+### Maintenance Features
+- **🔄 Auto Updates**: Weekly automatic updates with backup
+- **💾 Auto Backup**: Daily automatic backups with retention
+- **🔍 Health Checks**: Regular system health monitoring
+- **📊 Performance Monitoring**: Real-time performance metrics
+- **🔐 SSL Monitoring**: Certificate expiration monitoring
+- **📝 Log Management**: Automatic log rotation and cleanup
 
 ## 🔧 System Requirements
 
@@ -107,21 +144,40 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📦 Installation
 
-1. Clone the repository:
+### Basic Installation
 ```bash
-git clone https://github.com/aboshaheen5/nginx-proxy-manager-install-script.git
-cd nginx-proxy-manager-install-script
+# One-line installation
+curl -sSL https://raw.githubusercontent.com/aboshaheen5/nginx-proxy-manager-install-script/main/install.sh | sudo bash
 ```
 
-2. Make the script executable:
+### Advanced Installation
 ```bash
-chmod +x install.sh
+# Installation with custom options
+curl -sSL https://raw.githubusercontent.com/aboshaheen5/nginx-proxy-manager-install-script/main/install.sh | sudo bash -s -- \
+  --install-path /custom/path \
+  --version 2.9.22 \
+  --http-port 8080 \
+  --admin-port 8081 \
+  --https-port 8443 \
+  --install-monitoring \
+  --backup-schedule "0 0 * * *" \
+  --ssl-email "your@email.com"
 ```
 
-3. Run the installation script:
-```bash
-sudo ./install.sh
-```
+### Installation Options
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--install-path` | Custom installation path | `/opt/nginx-proxy-manager` |
+| `--version` | NPM version to install | `latest` |
+| `--http-port` | HTTP port | `80` |
+| `--admin-port` | Admin interface port | `81` |
+| `--https-port` | HTTPS port | `443` |
+| `--no-backup` | Disable automatic backups | `false` |
+| `--no-update` | Disable system updates | `false` |
+| `--install-monitoring` | Install monitoring tools | `false` |
+| `--no-auto-update` | Disable automatic updates | `false` |
+| `--backup-schedule` | Custom backup schedule (cron) | `0 0 * * *` |
+| `--ssl-email` | Email for SSL notifications | `admin@example.com` |
 
 ## 🔐 Default Access
 
@@ -163,58 +219,92 @@ After installation, access the admin interface:
 
 ## 🛠️ Maintenance
 
-### Updating Nginx Proxy Manager
+### Automatic Updates
 ```bash
-cd /opt/nginx-proxy-manager
-docker-compose pull
-docker-compose up -d
+# Check update status
+cat /opt/nginx-proxy-manager/update.log
+
+# Manual update
+/opt/nginx-proxy-manager/update.sh
 ```
 
-### Checking Logs
+### Automatic Backups
 ```bash
-docker-compose logs -f
+# Check backup status
+cat /opt/nginx-proxy-manager/backup.log
+
+# Manual backup
+/opt/nginx-proxy-manager/backup.sh
 ```
 
-### Backup Configuration
+### SSL Management
 ```bash
-cp -r /opt/nginx-proxy-manager/data /backup/
+# Check SSL status
+/opt/nginx-proxy-manager/ssl-config.sh
+
+# View SSL logs
+cat /opt/nginx-proxy-manager/ssl.log
 ```
 
 ### Monitoring
-- Check system resources regularly
-- Monitor SSL certificate expiration
-- Review access logs
-- Set up alerts for critical events
+```bash
+# Check system status
+/opt/nginx-proxy-manager/monitor.sh
 
-## ❓ Troubleshooting
+# View monitoring logs
+cat /opt/nginx-proxy-manager/monitor.log
+```
 
-### Common Issues and Solutions
+## 🔍 Advanced Usage
 
-1. **Port Conflicts**
-   - Ensure ports 80, 81, and 443 are not in use
-   - Check with: `netstat -tulpn | grep LISTEN`
-   - Solution: Stop conflicting services or change ports
+### Custom SSL Certificates
+```bash
+# Place your certificates in
+/opt/nginx-proxy-manager/data/custom_ssl/
+```
 
-2. **Docker Issues**
-   - Verify Docker is running: `systemctl status docker`
-   - Check Docker logs: `journalctl -u docker`
-   - Solution: Restart Docker service if needed
+### Custom Nginx Configuration
+```bash
+# Add custom configurations in
+/opt/nginx-proxy-manager/data/nginx/custom/
+```
 
-3. **SSL Certificate Problems**
-   - Verify DNS records
-   - Check Let's Encrypt rate limits
-   - Ensure ports 80/443 are accessible
-   - Solution: Check DNS propagation and firewall rules
+### Performance Tuning
+```bash
+# Adjust worker processes
+nano /opt/nginx-proxy-manager/data/nginx/nginx.conf
+```
 
-4. **Performance Issues**
-   - Check system resources
-   - Review Nginx configuration
-   - Monitor Docker container stats
-   - Solution: Optimize configuration or upgrade resources
+## 📈 Performance Tips
+
+1. **System Optimization**
+   - Enable HTTP/2
+   - Enable Gzip compression
+   - Use browser caching
+   - Enable keepalive connections
+
+2. **Security Enhancements**
+   - Enable HSTS
+   - Configure SSL parameters
+   - Set up rate limiting
+   - Enable ModSecurity
+
+3. **Monitoring Setup**
+   - Set up log rotation
+   - Configure monitoring alerts
+   - Regular backup schedule
+   - Performance metrics collection
 
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+### How to Contribute
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📞 Support
 
