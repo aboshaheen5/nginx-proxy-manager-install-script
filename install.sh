@@ -26,10 +26,25 @@ AUTO_UPDATE=true
 BACKUP_SCHEDULE="0 0 * * *"  # Daily at midnight
 SSL_EMAIL="admin@example.com"
 
+# Text formatting
+BOLD='\033[1m'
+
 # Function to print colored messages
 print_message() {
-    echo -e "${2}${1}${NC}"
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
 }
+
+# Function to handle script interruption
+handle_interrupt() {
+    print_message "${YELLOW}" "\n\nInstallation cancelled by user."
+    print_message "${YELLOW}" "If you want to try again, simply run the script again."
+    exit 1
+}
+
+# Set up trap for Ctrl+C
+trap handle_interrupt INT
 
 # Function to check if a command exists
 command_exists() {
@@ -38,8 +53,8 @@ command_exists() {
 
 # Function to confirm installation
 confirm_installation() {
-    print_message "\nNginx Proxy Manager Installation Configuration:" "$BLUE"
-    print_message "===========================================" "$BLUE"
+    print_message "${BOLD}" "\nNginx Proxy Manager Installation Configuration:"
+    print_message "${BOLD}" "==========================================="
     print_message "Installation Path: $INSTALL_PATH" "$BLUE"
     print_message "NPM Version: $NPM_VERSION" "$BLUE"
     print_message "HTTP Port: $HTTP_PORT" "$BLUE"
@@ -51,7 +66,7 @@ confirm_installation() {
     print_message "\nDo you want to proceed with the installation? (y/N) " "$YELLOW"
     read -r response
     if [[ ! "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-        print_message "Installation cancelled" "$RED"
+        print_message "${RED}" "Installation cancelled"
         exit 1
     fi
 }
@@ -59,7 +74,7 @@ confirm_installation() {
 # Function to update system
 update_system() {
     if [ "$UPDATE_SYSTEM" = true ]; then
-        print_message "Updating system packages..." "$YELLOW"
+        print_message "${BOLD}" "Updating system packages..."
         if command_exists apt-get; then
             apt-get update && apt-get upgrade -y
         elif command_exists yum; then
@@ -72,11 +87,11 @@ update_system() {
 
 # Function to check system requirements
 check_requirements() {
-    print_message "Checking system requirements..." "$YELLOW"
+    print_message "${BOLD}" "Checking system requirements..."
     
     # Check if running as root
     if [ "$EUID" -ne 0 ]; then
-        print_message "Please run as root" "$RED"
+        print_message "${RED}" "Please run as root"
         exit 1
     fi
 
@@ -85,45 +100,56 @@ check_requirements() {
         . /etc/os-release
         OS=$NAME
         VERSION=$VERSION_ID
-        print_message "Detected OS: $OS $VERSION" "$GREEN"
+        if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then
+            print_message "${RED}" "This script only supports Ubuntu and Debian systems"
+            exit 1
+        fi
+        print_message "${GREEN}" "Detected OS: $OS $VERSION"
     else
-        print_message "Could not detect OS" "$RED"
+        print_message "${RED}" "Could not detect OS"
         exit 1
     fi
 
     # Check architecture
     ARCH=$(uname -m)
     if [[ "$ARCH" != "x86_64" && "$ARCH" != "aarch64" ]]; then
-        print_message "Unsupported architecture: $ARCH" "$RED"
+        print_message "${RED}" "Unsupported architecture: $ARCH"
         exit 1
     fi
-    print_message "Detected architecture: $ARCH" "$GREEN"
+    print_message "${GREEN}" "Detected architecture: $ARCH"
 
     # Check memory
     TOTAL_MEM=$(free -m | awk '/^Mem:/{print $2}')
     if [ "$TOTAL_MEM" -lt 1000 ]; then
-        print_message "Warning: Less than 1GB RAM detected" "$YELLOW"
+        print_message "${RED}" "Warning: Less than 1GB RAM detected. Nginx Proxy Manager may not perform optimally."
+        read -p "Do you want to continue anyway? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            print_message "${YELLOW}" "Installation cancelled."
+            exit 1
+        fi
     else
-        print_message "Memory: ${TOTAL_MEM}MB" "$GREEN"
+        print_message "${GREEN}" "Memory: ${TOTAL_MEM}MB"
     fi
 
     # Check disk space
     FREE_DISK=$(df -m / | awk 'NR==2 {print $4}')
-    if [ "$FREE_DISK" -lt 5000 ]; then
-        print_message "Warning: Less than 5GB free disk space" "$YELLOW"
+    if [ "$FREE_DISK" -lt 1000 ]; then
+        print_message "${RED}" "Warning: Less than 1GB of free disk space. Please free up some space before continuing."
+        exit 1
     else
-        print_message "Free disk space: ${FREE_DISK}MB" "$GREEN"
+        print_message "${GREEN}" "Free disk space: ${FREE_DISK}MB"
     fi
 }
 
 # Function to backup existing installation
 backup_existing() {
     if [ -d "$INSTALL_PATH" ]; then
-        print_message "Backing up existing installation..." "$YELLOW"
+        print_message "${BOLD}" "Backing up existing installation..."
         BACKUP_DIR="/backup/nginx-proxy-manager-$(date +%Y%m%d-%H%M%S)"
         mkdir -p "$BACKUP_DIR"
         cp -r "$INSTALL_PATH"/* "$BACKUP_DIR/"
-        print_message "Backup created at $BACKUP_DIR" "$GREEN"
+        print_message "${GREEN}" "Backup created at $BACKUP_DIR"
         
         # Create backup log
         echo "Backup created at $(date)" > "$BACKUP_DIR/backup.log"
@@ -137,8 +163,8 @@ check_ports() {
     local ports=($HTTP_PORT $ADMIN_PORT $HTTPS_PORT)
     for port in "${ports[@]}"; do
         if netstat -tuln | grep -q ":$port "; then
-            print_message "Port $port is already in use" "$RED"
-            print_message "Please choose different ports or stop the service using port $port" "$YELLOW"
+            print_message "${RED}" "Port $port is already in use"
+            print_message "${YELLOW}" "Please choose different ports or stop the service using port $port"
             exit 1
         fi
     done
@@ -146,45 +172,60 @@ check_ports() {
 
 # Function to install dependencies
 install_dependencies() {
-    print_message "Installing dependencies..." "$YELLOW"
+    print_message "${BOLD}" "Installing dependencies..."
     
-    if command_exists apt-get; then
-        apt-get update
-        apt-get install -y curl git net-tools
-    elif command_exists yum; then
-        yum install -y curl git net-tools
-    elif command_exists dnf; then
-        dnf install -y curl git net-tools
-    else
-        print_message "Could not install dependencies" "$RED"
-        exit 1
-    fi
+    apt-get update
+    apt-get install -y curl wget git ufw apt-transport-https lsb-release ca-certificates gnupg2
+    
+    # Install Node.js
+    curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+    apt-get install -y nodejs
+    
+    # Install Docker
+    curl -fsSL https://get.docker.com | sh
+    
+    print_message "${GREEN}" "Dependencies installed successfully!"
 }
 
-# Function to install Docker
-install_docker() {
-    print_message "Installing Docker..." "$YELLOW"
+# Function to configure firewall
+configure_firewall() {
+    print_message "${BOLD}" "Configuring firewall..."
     
-    if ! command_exists docker; then
-        curl -fsSL https://get.docker.com | sh
-        systemctl enable docker
-        systemctl start docker
-    fi
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw allow 81/tcp
+    
+    print_message "${GREEN}" "Firewall configured successfully!"
+}
 
-    if ! command_exists docker-compose; then
-        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-        chmod +x /usr/local/bin/docker-compose
-    fi
+# Function to install Nginx Proxy Manager
+install_npm() {
+    print_message "${BOLD}" "Installing Nginx Proxy Manager..."
+    
+    # Create installation directory
+    mkdir -p "$INSTALL_PATH"
+    cd "$INSTALL_PATH"
+    
+    # Download and extract NPM
+    wget https://github.com/jc21/nginx-proxy-manager/archive/refs/heads/master.zip
+    unzip master.zip
+    mv nginx-proxy-manager-master/* .
+    rm -rf nginx-proxy-manager-master master.zip
+    
+    # Start NPM
+    docker-compose up -d
+    
+    print_message "${GREEN}" "Nginx Proxy Manager installed successfully!"
 }
 
 # Function to install monitoring tools
 install_monitoring_tools() {
     if [ "$INSTALL_MONITORING" = true ]; then
-        print_message "Installing monitoring tools..." "$YELLOW"
+        print_message "${BOLD}" "Installing monitoring tools..."
         
         # Install netdata
         if ! command_exists netdata; then
-            print_message "Installing Netdata..." "$YELLOW"
+            print_message "${YELLOW}" "Installing Netdata..."
             bash <(curl -Ss https://my-netdata.io/kickstart.sh) --non-interactive
         fi
         
@@ -258,13 +299,13 @@ main
 EOF
         
         chmod +x "$INSTALL_PATH/monitor.sh"
-        print_message "Monitoring script installed at $INSTALL_PATH/monitor.sh" "$GREEN"
+        print_message "${GREEN}" "Monitoring script installed at $INSTALL_PATH/monitor.sh"
     fi
 }
 
 # Function to create docker-compose.yml
 create_docker_compose() {
-    print_message "Creating docker-compose.yml..." "$YELLOW"
+    print_message "${BOLD}" "Creating docker-compose.yml..."
     
     cat > "$INSTALL_PATH/docker-compose.yml" << EOF
 version: '3'
@@ -287,41 +328,41 @@ EOF
 
 # Function to perform health check
 health_check() {
-    print_message "Performing health check..." "$YELLOW"
+    print_message "${BOLD}" "Performing health check..."
     
     # Check if containers are running
     if ! docker-compose -f "$INSTALL_PATH/docker-compose.yml" ps | grep -q "Up"; then
-        print_message "Containers are not running properly" "$RED"
+        print_message "${RED}" "Containers are not running properly"
         return 1
     fi
 
     # Check if admin interface is accessible
     if ! curl -s http://localhost:$ADMIN_PORT > /dev/null; then
-        print_message "Admin interface is not accessible" "$RED"
+        print_message "${RED}" "Admin interface is not accessible"
         return 1
     fi
 
     # Check container logs for errors
     if docker-compose -f "$INSTALL_PATH/docker-compose.yml" logs | grep -i "error"; then
-        print_message "Found errors in container logs" "$YELLOW"
+        print_message "${YELLOW}" "Found errors in container logs"
     fi
 
-    print_message "Health check passed" "$GREEN"
+    print_message "${GREEN}" "Health check passed"
     return 0
 }
 
 # Function to show installation summary
 show_summary() {
-    print_message "\nInstallation Summary:" "$GREEN"
-    print_message "=====================" "$GREEN"
-    print_message "Admin Interface: http://$(hostname -I | awk '{print $1}'):$ADMIN_PORT" "$GREEN"
-    print_message "Default Email: admin@example.com" "$GREEN"
-    print_message "Default Password: changeme" "$GREEN"
-    print_message "\nPort Configuration:" "$GREEN"
-    print_message "HTTP Port: $HTTP_PORT" "$GREEN"
-    print_message "Admin Port: $ADMIN_PORT" "$GREEN"
-    print_message "HTTPS Port: $HTTPS_PORT" "$GREEN"
-    print_message "\nPlease change the default credentials immediately!" "$YELLOW"
+    print_message "${BOLD}" "\nInstallation Summary:"
+    print_message "${GREEN}" "==========================================="
+    print_message "${GREEN}" "Admin Interface: http://$(hostname -I | awk '{print $1}'):$ADMIN_PORT"
+    print_message "${GREEN}" "Default Email: admin@example.com"
+    print_message "${GREEN}" "Default Password: changeme"
+    print_message "\nPort Configuration:"
+    print_message "HTTP Port: $HTTP_PORT"
+    print_message "Admin Port: $ADMIN_PORT"
+    print_message "HTTPS Port: $HTTPS_PORT"
+    print_message "\nPlease change the default credentials immediately!"
     
     # Save configuration
     cat > "$INSTALL_PATH/install-config.txt" << EOF
@@ -334,20 +375,20 @@ System Update: $UPDATE_SYSTEM
 EOF
 
     # Show copyright information
-    print_message "\n=============================================" "$BLUE"
-    print_message "Nginx Proxy Manager Installation Script" "$BLUE"
-    print_message "Copyright (c) 2025 Mohamed Shaheen" "$BLUE"
-    print_message "All rights reserved." "$BLUE"
-    print_message "=============================================" "$BLUE"
-    print_message "\nThank you for using our script!" "$GREEN"
-    print_message "For support, visit: https://github.com/aboshaheen5/nginx-proxy-manager-install-script" "$GREEN"
-    print_message "Join our Discord: https://discord.gg/UuasbmKqUh" "$GREEN"
+    print_message "${BLUE}" "\n============================================="
+    print_message "${BLUE}" "Nginx Proxy Manager Installation Script"
+    print_message "${BLUE}" "Copyright (c) 2025 Mohamed Shaheen"
+    print_message "${BLUE}" "All rights reserved."
+    print_message "${BLUE}" "============================================="
+    print_message "${GREEN}" "\nThank you for using our script!"
+    print_message "${GREEN}" "For support, visit: https://github.com/aboshaheen5/nginx-proxy-manager-install-script"
+    print_message "${GREEN}" "Join our Discord: https://discord.gg/UuasbmKqUh"
 }
 
 # Function to setup automatic updates
 setup_auto_updates() {
     if [ "$AUTO_UPDATE" = true ]; then
-        print_message "Setting up automatic updates..." "$YELLOW"
+        print_message "${BOLD}" "Setting up automatic updates..."
         
         # Create update script
         cat > "$INSTALL_PATH/update.sh" << 'EOF'
@@ -395,14 +436,14 @@ EOF
         
         # Add cron job for updates
         (crontab -l 2>/dev/null; echo "0 0 * * 0 $INSTALL_PATH/update.sh >> $INSTALL_PATH/update.log 2>&1") | crontab -
-        print_message "Automatic updates configured (weekly)" "$GREEN"
+        print_message "${GREEN}" "Automatic updates configured (weekly)"
     fi
 }
 
 # Function to setup backup schedule
 setup_backup_schedule() {
     if [ "$AUTO_BACKUP" = true ]; then
-        print_message "Setting up backup schedule..." "$YELLOW"
+        print_message "${BOLD}" "Setting up backup schedule..."
         
         # Create backup script
         cat > "$INSTALL_PATH/backup.sh" << 'EOF'
@@ -452,13 +493,13 @@ EOF
         
         # Add cron job for backups
         (crontab -l 2>/dev/null; echo "$BACKUP_SCHEDULE $INSTALL_PATH/backup.sh >> $INSTALL_PATH/backup.log 2>&1") | crontab -
-        print_message "Backup schedule configured" "$GREEN"
+        print_message "${GREEN}" "Backup schedule configured"
     fi
 }
 
 # Function to configure SSL
 configure_ssl() {
-    print_message "Configuring SSL settings..." "$YELLOW"
+    print_message "${BOLD}" "Configuring SSL settings..."
     
     # Create SSL configuration
     cat > "$INSTALL_PATH/ssl-config.sh" << EOF
@@ -509,7 +550,7 @@ EOF
     
     # Add cron job for SSL renewal
     (crontab -l 2>/dev/null; echo "0 0 1 * * $INSTALL_PATH/ssl-config.sh >> $INSTALL_PATH/ssl.log 2>&1") | crontab -
-    print_message "SSL configuration completed" "$GREEN"
+    print_message "${GREEN}" "SSL configuration completed"
 }
 
 # Function to parse command line arguments
@@ -561,7 +602,7 @@ parse_arguments() {
                 shift 2
                 ;;
             *)
-                print_message "Unknown option: $1" "$RED"
+                print_message "${RED}" "Unknown option: $1"
                 exit 1
                 ;;
         esac
@@ -573,7 +614,7 @@ main() {
     # Parse command line arguments
     parse_arguments "$@"
     
-    print_message "Starting Nginx Proxy Manager installation..." "$GREEN"
+    print_message "${BOLD}" "Starting Nginx Proxy Manager installation..."
     
     # Confirm installation
     confirm_installation
@@ -595,17 +636,17 @@ main() {
     # Install dependencies
     install_dependencies
     
-    # Install Docker
-    install_docker
+    # Configure firewall
+    configure_firewall
     
-    # Create installation directory
-    mkdir -p "$INSTALL_PATH"
+    # Install NPM
+    install_npm
     
     # Create docker-compose.yml
     create_docker_compose
     
     # Start the containers
-    print_message "Starting Nginx Proxy Manager..." "$YELLOW"
+    print_message "${YELLOW}" "Starting Nginx Proxy Manager..."
     cd "$INSTALL_PATH"
     docker-compose up -d
     
@@ -626,9 +667,9 @@ main() {
     
     # Perform health check
     if ! health_check; then
-        print_message "Installation completed with warnings" "$YELLOW"
+        print_message "${YELLOW}" "Installation completed with warnings"
     else
-        print_message "Installation completed successfully" "$GREEN"
+        print_message "${GREEN}" "Installation completed successfully"
     fi
     
     # Show summary
